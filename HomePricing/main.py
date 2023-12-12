@@ -30,25 +30,39 @@ class PriceModel:
                 train_df[column] = factorized_series
         
         train_df.fillna(-1,inplace=True)
+        train_df['SalePrice'] = np.log(train_df['SalePrice'])
+        train_df['GrLivArea'] = np.log(train_df['GrLivArea'])
+        train_df.loc['TotalBsmtSF'] = np.log(train_df['TotalBsmtSF'])
+        train_df.fillna(0,inplace=True)
+        Nulls = ['PoolQC', 'MiscFeature','Alley','Fence','FireplaceQu','LotFrontage']
+        train_df.drop(Nulls,axis=1,inplace=True)
+        
         
     def train(self):
         y = train_df['SalePrice']
         X = train_df.drop(['SalePrice','Id'],axis=1)
 
     
-
-        self.rf_regressor = RandomForestRegressor(   n_estimators=100,     # You can change the number of trees
-                                                max_depth=20,         # Adjust the maximum depth of trees
-                                                min_samples_leaf=5,   # Adjust the minimum samples per leaf
-                                                random_state=42
+        X_train, X_val, y_train, y_val =  train_test_split(X,y,test_size=0.01,random_state=42)
+        self.rf_regressor = RandomForestRegressor(   n_estimators=100, 
+                                        random_state=42,
+                                        max_depth=20,
+                                        min_samples_split=3,
+                                        min_samples_leaf = 2,
+                                        max_features = 30
                                             )
-        self.rf_regressor.fit(X, y)
+        self.rf_regressor.fit(X_train, y_train)
         
     def preprocess(self,df):
         for column, mapping in self.factorized_mappings.items():
             if column in df.columns and df[column].dtype == 'object':
                 df[column] = df[column].map(mapping).fillna(-1)
         df.fillna(-1,inplace = True)
+        df['GrLivArea'] = np.log(df['GrLivArea'])
+        df.loc['TotalBsmtSF'] = np.log(df['TotalBsmtSF'])
+        df.fillna(0,inplace=True)
+        Nulls = ['PoolQC', 'MiscFeature','Alley','Fence','FireplaceQu','LotFrontage']
+        df.drop(Nulls,axis=1,inplace=True)
         self.test_df = df
         
     def predict(self):
@@ -57,8 +71,8 @@ class PriceModel:
         predictions = self.rf_regressor.predict(T)
         self.results = pd.DataFrame()
         
-        self.results['Id']  = self.test_df['Id']
-        self.results['SalePrice'] = predictions
+        self.results['Id']  = self.test_df['Id'].astype('int')
+        self.results['SalePrice'] = np.exp(predictions)
         
     def write_result(self):
         self.results.to_csv('./data/result.csv',index=False)
@@ -72,7 +86,4 @@ if __name__=="__main__":
     p_model.train()
     p_model.preprocess(test_df)
     p_model.predict()
-    p_model.write_result()
-    
-    
-                
+    p_model.write_result() 
