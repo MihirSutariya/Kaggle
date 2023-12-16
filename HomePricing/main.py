@@ -86,4 +86,4 @@ if __name__=="__main__":
     p_model.train()
     p_model.preprocess(test_df)
     p_model.predict()
-    p_model.write_result() 
+    p_model.write_result()
